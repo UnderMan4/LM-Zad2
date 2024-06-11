@@ -1,271 +1,145 @@
-import { firstLetter, getErrorMessage } from './utils.js';
+import { SyntaxError, firstLetter } from "./utils.js";
 
-type Production =
-  | 'S'
-  | 'Z'
-  | 'W'
-  | 'W`'
-  | 'P'
-  | 'R'
-  | 'R`'
-  | 'L'
-  | 'L`'
-  | 'C'
-  | 'O';
+type Productions = "S" | "W" | "C" | "O";
 
-type ProductionFollow = 'Z' | 'W`' | 'R`' | 'L`';
+/**
+ * This class defines grammar for this productions:
+ *
+ * S = (W, ";"), ({W, ";"});
+ * W = ((C, {C}),  ['.', (C, {C})] | ("(", W, ")")), [O, W];
+ * C = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+ * O = "+" | "-" | "*" | ":" | "^";
+ **/
+export class Grammar {
+   private evaluate = (input: string) => {
+      this.s(input);
+   };
 
-const first = (prod: Production): (null | string)[] => {
-  switch (prod) {
-    case 'S':
-      return Array.from('(0123456789');
-    case 'Z':
-      return [...Array.from('(0123456789'), null];
-    case 'W':
-      return Array.from('(0123456789');
-    case 'W`':
-      return [...Array.from('*:+-^'), null];
-    case 'P':
-      return Array.from('(0123456789');
-    case 'R':
-      return Array.from('0123456789');
-    case 'R`':
-      return ['.', null];
-    case 'L':
-      return Array.from('0123456789');
-    case 'L`':
-      return [...Array.from('0123456789'), null];
-    case 'C':
-      return Array.from('0123456789');
-    case 'O':
-      return Array.from('*:+-^');
-  }
-};
+   private first = (prod: Productions) => {
+      switch (prod) {
+         case "S":
+            return ["(", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+         case "W":
+            return ["(", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+         case "C":
+            return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+         case "O":
+            return ["+", "-", "*", ":", "^"];
+      }
+   };
 
-const follow = (prod: ProductionFollow): (null | string)[] => {
-  switch (prod) {
-    case 'Z':
-      return [];
-    case 'W`':
-      return Array.from(';,)');
-    case 'R`':
-      return [...Array.from(';)*:+-^'), null];
-    case 'L`':
-      return [...Array.from(';)*:+-^'), null];
-  }
-};
+   private s = (x: string) => {
+      console.log("s", x);
 
-/*
-I want to implement this grammar in TypeScript:
+      if (x.length === 0) {
+         return;
+      }
 
-S ::= W;Z
-Z ::= W;Z|ε
-W ::= PW’
-W’::= OW|ε
-P ::= R|(W)
-R ::= LR’
-R’::= .L|ε
-L ::= CL’
-L’::= L|ε
-C ::= 0|1|2|3|4|5|6|7|8|9
-O ::= *|:|+|-|ˆ
+      const [firstChar] = firstLetter(x);
 
+      if (!this.first("S").includes(firstChar)) {
+         throw new SyntaxError(firstChar, ...this.first("S"));
+      }
 
-*/
+      let restAfterSemicolon = x;
 
-export function s(x: string) {
-  const [firstChar] = firstLetter(x);
+      do {
+         const restAfterW = this.w(restAfterSemicolon);
 
-  if (!first('W').includes(firstChar)) {
-    throw new Error(`Expected ${first('W').join(', ')}, but got ${firstChar}`);
-  }
+         const [firstCharAfterW] = firstLetter(restAfterW);
 
-  const restAfterW = w(x);
+         if (firstCharAfterW !== ";") {
+            throw new SyntaxError(firstCharAfterW, ";");
+         }
 
-  if (!restAfterW.startsWith(';')) {
-    throw new Error(`Expected ;, but got ${restAfterW.charAt(0)}`);
-  }
+         restAfterSemicolon = restAfterW.slice(1);
+      } while (this.first("S").includes(restAfterSemicolon.charAt(0)));
+   };
 
-  const restAfterSemicolon = restAfterW.slice(1);
+   private w = (x: string): string => {
+      console.log("w", x);
 
-  const restAfterZ = z(restAfterSemicolon);
+      if (x.length === 0) {
+         return "";
+      }
 
-  return restAfterZ;
+      const [firstChar, rest] = firstLetter(x);
+
+      if (!this.first("W").includes(firstChar)) {
+         throw new SyntaxError(firstChar, ...this.first("W"));
+      }
+
+      let restAfterP: null | string = null;
+
+      if (firstChar === "(") {
+         const restAfterW = this.w(rest);
+
+         const [firstCharAfterW, restAfterClosingParenthesis] =
+            firstLetter(restAfterW);
+
+         if (firstCharAfterW !== ")") {
+            throw new SyntaxError(firstCharAfterW, ")");
+         }
+
+         restAfterP = restAfterClosingParenthesis;
+      } else {
+         let restAfterC = x;
+         let restAfterC2: null | string = null;
+         do {
+            restAfterC = this.c(restAfterC);
+         } while (this.first("C").includes(restAfterC.charAt(0)));
+
+         if (restAfterC.startsWith(".")) {
+            restAfterC2 = restAfterC.slice(1);
+            do {
+               restAfterC2 = this.c(restAfterC2);
+            } while (this.first("C").includes(restAfterC2.charAt(0)));
+         }
+
+         restAfterP = restAfterC2 || restAfterC;
+      }
+
+      if (this.first("O").includes(restAfterP.charAt(0))) {
+         const restAfterO = this.o(restAfterP);
+         const restAfterW = this.w(restAfterO);
+         return restAfterW;
+      }
+
+      return restAfterP;
+   };
+   private c = (x: string): string => {
+      console.log("c", x);
+
+      if (x.length === 0) {
+         return "";
+      }
+
+      const [firstChar] = firstLetter(x);
+
+      if (!this.first("C").includes(firstChar)) {
+         throw new SyntaxError(firstChar, ...this.first("C"));
+      }
+
+      return x.slice(1);
+   };
+   private o = (x: string): string => {
+      console.log("o", x);
+
+      if (x.length === 0) {
+         return "";
+      }
+
+      const [firstChar] = firstLetter(x);
+
+      if (!this.first("O").includes(firstChar)) {
+         throw new SyntaxError(firstChar, ...this.first("O"));
+      }
+
+      return x.slice(1);
+   };
+
+   public static readonly evaluate = (input: string) => {
+      new Grammar().evaluate(input);
+   };
 }
 
-function z(x: string) {
-  const [firstChar, rest] = firstLetter(x);
-
-  if (!first('Z').includes(firstChar) || !follow('Z').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('Z'), ...follow('Z')));
-  }
-
-  if (
-    firstChar === null ||
-    (!first('Z').includes(firstChar) && follow('Z').includes(firstChar))
-  ) {
-    return rest;
-  }
-
-  const restAfterW = w(x);
-
-  if (!restAfterW.startsWith(';')) {
-    throw new Error(getErrorMessage(restAfterW.charAt(0), ';'));
-  }
-
-  const restAfterSemicolon = restAfterW.slice(1);
-
-  const restAfterZ = z(restAfterSemicolon);
-
-  return restAfterZ;
-}
-
-function w(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('W').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('W')));
-  }
-
-  const restAfterP = p(x);
-
-  const restAfterWPrime = wPrime(restAfterP);
-
-  return restAfterWPrime;
-}
-
-function wPrime(x: string) {
-  const [firstChar, rest] = firstLetter(x);
-
-  if (!first('W`').includes(firstChar) || !follow('W`').includes(firstChar)) {
-    throw new Error(
-      getErrorMessage(firstChar, ...first('W`'), ...follow('W`')),
-    );
-  }
-
-  if (
-    firstChar === null ||
-    (!first('W`').includes(firstChar) && follow('W`').includes(firstChar))
-  ) {
-    return rest;
-  }
-
-  const restAfterO = o(x);
-
-  const restAfterW = w(restAfterO);
-
-  return restAfterW;
-}
-
-function p(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('P').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('P')));
-  }
-
-  if (firstChar === '(') {
-    const restAfterW = w(x.slice(1));
-
-    if (!restAfterW.startsWith(')')) {
-      throw new Error(getErrorMessage(restAfterW.charAt(0), ')'));
-    }
-
-    return restAfterW.slice(1);
-  }
-
-  return r(x);
-}
-
-function r(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('R').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('R')));
-  }
-
-  const restAfterL = l(x);
-  const restAfterRPrime = rPrime(restAfterL);
-
-  return restAfterRPrime;
-}
-
-function rPrime(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('R`').includes(firstChar) || !follow('R`').includes(firstChar)) {
-    throw new Error(
-      getErrorMessage(firstChar, ...first('R`'), ...follow('R`')),
-    );
-  }
-
-  if (
-    firstChar === null ||
-    (!first('R`').includes(firstChar) && follow('R`').includes(firstChar))
-  ) {
-    return x;
-  }
-
-  if (!x.startsWith('.')) {
-    throw new Error(getErrorMessage(firstChar, '.'));
-  }
-
-  const restAfterL = l(x.slice(1));
-
-  return restAfterL;
-}
-
-function l(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('L').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('L')));
-  }
-
-  const restAfterC = c(x);
-
-  const restAfterLPrime = lPrime(restAfterC);
-
-  return restAfterLPrime;
-}
-
-function lPrime(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('L`').includes(firstChar) || !follow('L`').includes(firstChar)) {
-    throw new Error(
-      getErrorMessage(firstChar, ...first('L`'), ...follow('L`')),
-    );
-  }
-
-  if (
-    firstChar === null ||
-    (!first('L`').includes(firstChar) && follow('L`').includes(firstChar))
-  ) {
-    return x;
-  }
-
-  const restAfterL = l(x);
-
-  return restAfterL;
-}
-
-function c(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('C').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('C')));
-  }
-
-  return x.slice(1);
-}
-
-function o(x: string) {
-  const [firstChar] = firstLetter(x);
-
-  if (!first('O').includes(firstChar)) {
-    throw new Error(getErrorMessage(firstChar, ...first('O')));
-  }
-
-  return x.slice(1);
-}
