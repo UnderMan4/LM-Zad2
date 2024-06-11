@@ -1,8 +1,9 @@
 {
-  "plugins": ["@trivago/prettier-plugin-sort-imports"],
-  "tabWidth": 3,
-  "trailingComma": "es5",
-  "importOrder": ["^@/(.*)$", "^[./]"],
-  "importOrderSeparation": true,
-  "importOrderSortSpecifiers": true
+   "plugins": ["@trivago/prettier-plugin-sort-imports"],
+   "tabWidth": 3,
+   "trailingComma": "es5",
+   "importOrder": ["^@/(.*)$", "^[./]"],
+   "importOrderSeparation": true,
+   "importOrderSortSpecifiers": true,
+   "printWidth": 110
 }

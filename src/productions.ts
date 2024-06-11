@@ -11,10 +11,17 @@ type Productions = "S" | "W" | "C" | "O";
  * O = "+" | "-" | "*" | ":" | "^";
  **/
 export class Grammar {
+   openedParens = 0;
+
    private evaluate = (input: string) => {
       this.s(input);
    };
 
+   /**
+    * Get the first set of a production
+    * @param prod
+    * @returns array of first set
+    * */
    private first = (prod: Productions) => {
       switch (prod) {
          case "S":
@@ -28,9 +35,37 @@ export class Grammar {
       }
    };
 
-   private s = (x: string) => {
-      console.log("s", x);
+   /**
+    * Get the follow set of a production. This is used only for error handling.
+    * @param prod
+    * @returns array of follow set
+    * */
+   private follow = (prod: Productions) => {
+      switch (prod) {
+         case "S":
+            return [];
+         case "W":
+            if (this.openedParens > 0) {
+               return [")", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+            }
+            return [";", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+         case "C":
+            if (this.openedParens > 0) {
+               return ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "+", "-", "*", ":", "^", ")"];
+            }
+            return ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "+", "-", "*", ":", "^", ";"];
+         case "O":
+            return ["(", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+      }
+   };
 
+   /**
+    * Production S = (W, ";"), ({W, ";"});
+    * @param x
+    * @returns
+    * @throws SyntaxError
+    * */
+   private s = (x: string) => {
       if (x.length === 0) {
          return;
       }
@@ -56,9 +91,13 @@ export class Grammar {
       } while (this.first("S").includes(restAfterSemicolon.charAt(0)));
    };
 
+   /**
+    * Production W = ((C, {C}),  ['.', (C, {C})] | ("(", W, ")")), [O, W];
+    * @param x
+    * @returns
+    * @throws SyntaxError
+    * */
    private w = (x: string): string => {
-      console.log("w", x);
-
       if (x.length === 0) {
          return "";
       }
@@ -72,24 +111,43 @@ export class Grammar {
       let restAfterP: null | string = null;
 
       if (firstChar === "(") {
+         // ("(", W, ")"), [O, W];
+         this.openedParens++;
+
          const restAfterW = this.w(rest);
 
-         const [firstCharAfterW, restAfterClosingParenthesis] =
-            firstLetter(restAfterW);
+         const [firstCharAfterW, restAfterClosingParenthesis] = firstLetter(restAfterW);
 
-         if (firstCharAfterW !== ")") {
-            throw new SyntaxError(firstCharAfterW, ")");
+         if (!this.follow("W").includes(firstCharAfterW)) {
+            throw new SyntaxError(firstCharAfterW, ...this.follow("W").filter((ch) => ch !== ";"));
+         }
+
+         if (![";", ...this.first("O")].includes(restAfterClosingParenthesis.charAt(0))) {
+            if (this.openedParens === 0) {
+               throw new SyntaxError(restAfterClosingParenthesis.charAt(0), ";", ...this.first("O"));
+            }
+            if (!restAfterClosingParenthesis.startsWith(")")) {
+               throw new SyntaxError(restAfterClosingParenthesis.charAt(0), ";", ")", ...this.first("O"));
+            }
          }
 
          restAfterP = restAfterClosingParenthesis;
-      } else {
+
+         this.openedParens--;
+      } else if (this.first("C").includes(firstChar)) {
+         // (C, {C}),  ['.', (C, {C})] | ("(", W, ")")), [O, W];
          let restAfterC = x;
          let restAfterC2: null | string = null;
          do {
             restAfterC = this.c(restAfterC);
          } while (this.first("C").includes(restAfterC.charAt(0)));
 
+         if (![".", ...this.follow("W"), ...this.first("O")].includes(restAfterC.charAt(0))) {
+            throw new SyntaxError(restAfterC.charAt(0), ".", ...this.follow("W"), ...this.first("O"));
+         }
+
          if (restAfterC.startsWith(".")) {
+            // ['.', (C, {C})]
             restAfterC2 = restAfterC.slice(1);
             do {
                restAfterC2 = this.c(restAfterC2);
@@ -100,6 +158,7 @@ export class Grammar {
       }
 
       if (this.first("O").includes(restAfterP.charAt(0))) {
+         // [O, W];
          const restAfterO = this.o(restAfterP);
          const restAfterW = this.w(restAfterO);
          return restAfterW;
@@ -107,9 +166,14 @@ export class Grammar {
 
       return restAfterP;
    };
-   private c = (x: string): string => {
-      console.log("c", x);
 
+   /**
+    * Production C = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+    * @param x
+    * @returns
+    * @throws SyntaxError
+    * */
+   private c = (x: string): string => {
       if (x.length === 0) {
          return "";
       }
@@ -122,9 +186,14 @@ export class Grammar {
 
       return x.slice(1);
    };
-   private o = (x: string): string => {
-      console.log("o", x);
 
+   /**
+    * Production O = "+" | "-" | "*" | ":" | "^";
+    * @param x
+    * @returns
+    * @throws SyntaxError
+    * */
+   private o = (x: string): string => {
       if (x.length === 0) {
          return "";
       }
@@ -138,8 +207,12 @@ export class Grammar {
       return x.slice(1);
    };
 
+   /**
+    * Evaluate the input string
+    * @param input
+    * @throws SyntaxError
+    * */
    public static readonly evaluate = (input: string) => {
       new Grammar().evaluate(input);
    };
 }
-

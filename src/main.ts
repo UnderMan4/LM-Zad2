@@ -9,17 +9,23 @@ const getExpression = () => {
       output: process.stdout,
    });
 
-   readLine.question("Enter a string: ", (input) => {
+   readLine.question(chalk.inverse("Enter an Expression:") + " ", (input) => {
       if (!input || input === "") {
          readLine.close();
          return;
       }
 
       try {
-         Grammar.evaluate(input);
+         console.log();
+
+         Grammar.evaluate(input.replace(/\s/g, ""));
+
+         console.log(chalk.green.inverse("The expression is correct!"));
       } catch (error) {
          console.error(chalk.red.inverse(error.message));
       }
+      console.log();
+      console.log();
       readLine.close();
 
       getExpression();
