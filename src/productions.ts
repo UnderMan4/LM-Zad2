@@ -13,6 +13,7 @@ type Productions = "S" | "W" | "C" | "O";
 export class Grammar {
    openedParens = 0;
    iterator = 0;
+   expression = "";
 
    private evaluate = (input: string) => {
       this.s(input);
@@ -67,6 +68,8 @@ export class Grammar {
     * @throws SyntaxError
     * */
    private s = (x: string) => {
+      this.expression = x;
+
       if (x.length === 0) {
          return;
       }
@@ -74,7 +77,7 @@ export class Grammar {
       const [firstChar] = firstLetter(x);
 
       if (!this.first("S").includes(firstChar)) {
-         throw new SyntaxError(firstChar, this.iterator, ...this.first("S"));
+         throw new SyntaxError(this.expression, firstChar, this.iterator, ...this.first("S"));
       }
 
       let restAfterSemicolon = x;
@@ -85,7 +88,7 @@ export class Grammar {
          const [firstCharAfterW] = firstLetter(restAfterW);
 
          if (firstCharAfterW !== ";") {
-            throw new SyntaxError(firstCharAfterW, this.iterator, ";");
+            throw new SyntaxError(this.expression, firstCharAfterW, this.iterator, ";");
          }
 
          this.iterator++;
@@ -108,7 +111,7 @@ export class Grammar {
       const [firstChar, rest] = firstLetter(x);
 
       if (!this.first("W").includes(firstChar)) {
-         throw new SyntaxError(firstChar, this.iterator, ...this.first("W"));
+         throw new SyntaxError(this.expression, firstChar, this.iterator, ...this.first("W"));
       }
 
       let restAfterP: null | string = null;
@@ -125,6 +128,7 @@ export class Grammar {
 
          if (!this.follow("W").includes(firstCharAfterW)) {
             throw new SyntaxError(
+               this.expression,
                firstCharAfterW,
                this.iterator,
                ...this.follow("W").filter((ch) => ch !== ";")
@@ -134,6 +138,7 @@ export class Grammar {
          if (![";", ...this.first("O")].includes(restAfterClosingParenthesis.charAt(0))) {
             if (this.openedParens === 0) {
                throw new SyntaxError(
+                  this.expression,
                   restAfterClosingParenthesis.charAt(0),
                   this.iterator,
                   ";",
@@ -142,6 +147,7 @@ export class Grammar {
             }
             if (!restAfterClosingParenthesis.startsWith(")")) {
                throw new SyntaxError(
+                  this.expression,
                   restAfterClosingParenthesis.charAt(0),
                   this.iterator,
                   ";",
@@ -166,6 +172,7 @@ export class Grammar {
 
          if (![".", ...this.follow("W"), ...this.first("O")].includes(restAfterC.charAt(0))) {
             throw new SyntaxError(
+               this.expression,
                restAfterC.charAt(0),
                this.iterator,
                ".",
@@ -211,7 +218,7 @@ export class Grammar {
       const [firstChar] = firstLetter(x);
 
       if (!this.first("C").includes(firstChar)) {
-         throw new SyntaxError(firstChar, this.iterator, ...this.first("C"));
+         throw new SyntaxError(this.expression, firstChar, this.iterator, ...this.first("C"));
       }
 
       this.iterator++;
@@ -233,7 +240,7 @@ export class Grammar {
       const [firstChar] = firstLetter(x);
 
       if (!this.first("O").includes(firstChar)) {
-         throw new SyntaxError(firstChar, this.iterator, ...this.first("O"));
+         throw new SyntaxError(this.expression, firstChar, this.iterator, ...this.first("O"));
       }
 
       this.iterator++;

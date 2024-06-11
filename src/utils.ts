@@ -7,11 +7,13 @@ export const firstLetter = (str: string): [string, string] => {
 };
 
 export class SyntaxError extends Error {
-   constructor(got: string, charNo: number, ...expected: string[]) {
+   constructor(expression: string, got: string, charNo: number, ...expected: string[]) {
       super(
          expected.length === 1
-            ? `Expected '${expected[0]}', but got '${got || "EOF"}' at character ${charNo + 1}`
-            : `Expected one of {${[...new Set(expected)].map((ch) => "'" + ch + "'").join(", ")}}, but got '${got || "EOF"}' at character ${charNo + 1}`
+            ? `Expected '${expected[0]}', but got ${got ? "'" + got + "'" : "EOF"}\n` +
+                 `${expression}\n${" ".repeat(charNo)}^`
+            : `Expected one of {${[...new Set(expected)].map((ch) => "'" + ch + "'").join(", ")}}, but got ${got ? "'" + got + "'" : "EOF"}\n` +
+                 `${expression}\n${" ".repeat(charNo)}^`
       );
    }
 }

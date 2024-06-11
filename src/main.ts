@@ -20,9 +20,9 @@ const getExpression = () => {
 
          Grammar.evaluate(input.replace(/\s/g, ""));
 
-         console.log(chalk.green.inverse("The expression is correct!"));
+         console.log(chalk.green("The expression is correct!"));
       } catch (error) {
-         console.error(chalk.red.inverse(error.message));
+         console.error(chalk.red(error.message));
       }
       console.log();
       console.log();
